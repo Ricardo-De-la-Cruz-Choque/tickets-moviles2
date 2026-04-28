@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "787143493395",
+    "project_id": "tickets-moviles",
+    "storage_bucket": "tickets-moviles.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:787143493395:android:0933e8d9c7806a6e9afce6",
+        "android_client_info": {
+          "package_name": "com.example.proyecto_moviles2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBq_IT7OZ-cdI6XO_9L3NZsIfiK8S6PfzM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
