@@ -8,6 +8,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:open_filex/open_filex.dart'; // No olvides instalarlo
+import 'package:proyecto_moviles2/screens/ticket_detail_screen.dart';
 
 class ViewTicketsScreen extends StatefulWidget {
   final String userId;
@@ -255,8 +256,11 @@ class _ViewTicketsScreenState extends State<ViewTicketsScreen> {
   }
 
   void _navigateToTicketDetail(BuildContext context, Ticket ticket) {
-    // Aquí puedes implementar una pantalla de detalle si deseas
-  }
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => TicketDetailScreen(ticket: ticket)),
+  );
+}
 
   /// ✅ Función corregida: solo guarda PDF local en Android/iOS
   Future<void> _generatePdf(Ticket ticket) async {
