@@ -65,16 +65,18 @@ class TicketService {
 
   // Obtener tickets por estado
   Stream<List<Ticket>> obtenerTicketsPorEstado(String estado) {
-    return _firestore
-        .collection('tickets')
-        .where('estado', isEqualTo: estado)
-        .orderBy('fechaCreacion', descending: true)
-        .snapshots()
-        .handleError(
-            (error) => throw Exception('Error al obtener tickets: $error'))
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => Ticket.fromFirestore(doc)).toList());
-  }
+  return _firestore
+      .collection('tickets')
+      .where('estado', isEqualTo: estado)
+      // Asegúrate de que este nombre sea EXACTO al que usaste en el índice manual
+      // O cámbialo temporalmente a 'titulo' para generar un link de error nuevo
+      .orderBy('fechaCreacion', descending: true) 
+      .snapshots()
+      .handleError(
+          (error) => throw Exception('Error al obtener tickets: $error'))
+      .map((snapshot) =>
+          snapshot.docs.map((doc) => Ticket.fromFirestore(doc)).toList());
+}
 
   // Actualizar estado del ticket
   Future<void> actualizarEstadoTicket({

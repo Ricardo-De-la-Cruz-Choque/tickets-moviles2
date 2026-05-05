@@ -19,6 +19,23 @@ class _AdminTicketsScreenState extends State<AdminTicketsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _filterStatus = 'todos';
 
+  late Stream<List<Ticket>> _ticketsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    // 2. Inicializamos el stream al cargar la pantalla
+    _updateStream();
+  }
+
+  void _updateStream() {
+    setState(() {
+      _ticketsStream = _filterStatus == 'todos'
+          ? TicketService().obtenerTodosLosTickets()
+          : TicketService().obtenerTicketsPorEstado(_filterStatus);
+    });
+  }
+  
   @override
   void dispose() {
     _searchController.dispose();
@@ -38,18 +55,20 @@ class _AdminTicketsScreenState extends State<AdminTicketsScreen> {
     }
   }
 
-  @override
+ @override
   Widget build(BuildContext context) {
-    final primaryColor = const Color(0xFF3B5998);
-    final buttonColor = const Color(0xFF4267B2);
+    // Definición de colores consistentes
+    const primaryColor = Color(0xFF3B5998);
+    const buttonColor = Color(0xFF4267B2);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
         backgroundColor: primaryColor,
+        elevation: 0,
         title: const Text(
           'Administrador de Tickets',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
@@ -57,91 +76,111 @@ class _AdminTicketsScreenState extends State<AdminTicketsScreen> {
             tooltip: 'Cerrar sesión',
             onPressed: () async {
               await AuthService().signOut();
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => LoginScreen()),
-              );
+              if (context.mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+              }
             },
           ),
         ],
       ),
-      // 1. Esto permite que la pantalla se ajuste cuando sale el teclado
-      resizeToAvoidBottomInset: true, 
+      resizeToAvoidBottomInset: true,
       body: Column(
         children: [
-          // 2. Contenedor superior para filtros y búsqueda
+          // SECCIÓN DE FILTROS Y BÚSQUEDA
           Container(
-            padding: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
             child: Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      const Text(
-                        "Filtrar:",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      const SizedBox(width: 16),
-                      DropdownButton<String>(
+                Row(
+                  children: [
+                    const Text(
+                      "Filtrar:",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(width: 12),
+                    // Dropdown para estados
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
                         value: _filterStatus,
-                        dropdownColor: Colors.white,
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontWeight: FontWeight.w600,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                         items: ['todos', 'pendiente', 'en_proceso', 'resuelto']
                             .map((status) => DropdownMenuItem(
                                   value: status,
-                                  child: Text(status.toUpperCase()),
+                                  child: Text(status.toUpperCase(),
+                                      style: const TextStyle(fontSize: 13)),
                                 ))
                             .toList(),
-                        onChanged: (value) => setState(() => _filterStatus = value!),
-                      ),
-                      const Spacer(),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.group, size: 20),
-                        label: const Text('Usuarios'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: buttonColor,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AdminUsersScreen())),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 15),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Buscar por título, descripción...',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              _filterStatus = value;
+                              _updateStream(); // Actualizamos el Stream en el estado
+                            });
+                          }
+                        },
                       ),
                     ),
-                    onChanged: (value) => setState(() => _searchQuery = value.toLowerCase().trim()),
+                    const SizedBox(width: 8),
+                    // Botón de Usuarios
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.group, size: 18),
+                      label: const Text('Usuarios'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: buttonColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => AdminUsersScreen())),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Campo de Búsqueda
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por título o usuario...',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
+                  onChanged: (value) => setState(() {
+                    _searchQuery = value.toLowerCase().trim();
+                  }),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
-          // 3. El Expanded gestiona el espacio de la lista sin desbordar
+
+          // LISTADO DE TICKETS CON STREAMBUILDER
           Expanded(
             child: GestureDetector(
-              // 4. Mejora de UX: cierra el teclado al tocar la lista
               onTap: () => FocusScope.of(context).unfocus(),
               child: _buildTicketsList(),
             ),
@@ -152,16 +191,16 @@ class _AdminTicketsScreenState extends State<AdminTicketsScreen> {
   }
 
   Widget _buildTicketsList() {
-    final stream =
-        _filterStatus == 'todos'
-            ? TicketService().obtenerTodosLosTickets()
-            : TicketService().obtenerTicketsPorEstado(_filterStatus);
-
+    // IMPORTANTE: Se usa la variable _ticketsStream del estado para evitar parpadeos
     return StreamBuilder<List<Ticket>>(
-      stream: stream,
+      stream: _ticketsStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -169,15 +208,16 @@ class _AdminTicketsScreenState extends State<AdminTicketsScreen> {
         }
 
         final tickets = snapshot.data!;
-        final filteredTickets =
-            tickets.where((ticket) {
-              final titulo = ticket.titulo.toLowerCase();
-              final nombre = ticket.usuarioNombre.toLowerCase();
-              final descripcion = ticket.descripcion.toLowerCase();
-              return titulo.contains(_searchQuery) ||
-                  nombre.contains(_searchQuery) ||
-                  descripcion.contains(_searchQuery);
-            }).toList();
+        
+        // Filtrado por texto (búsqueda local)
+        final filteredTickets = tickets.where((ticket) {
+          final titulo = ticket.titulo.toLowerCase();
+          final nombre = ticket.usuarioNombre.toLowerCase();
+          final descripcion = ticket.descripcion.toLowerCase();
+          return titulo.contains(_searchQuery) ||
+              nombre.contains(_searchQuery) ||
+              descripcion.contains(_searchQuery);
+        }).toList();
 
         if (filteredTickets.isEmpty) {
           return const Center(
@@ -187,35 +227,39 @@ class _AdminTicketsScreenState extends State<AdminTicketsScreen> {
 
         return ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-          itemCount:
-              (_filterStatus == 'todos' ? 1 : 0) + filteredTickets.length,
-          separatorBuilder:
-              (_, __) => const Divider(
-                height: 1,
-                color: Colors.grey,
-                indent: 12,
-                endIndent: 12,
-              ),
+          itemCount: (_filterStatus == 'todos' ? 1 : 0) + filteredTickets.length,
+          separatorBuilder: (_, __) => const Divider(
+            height: 1,
+            color: Colors.grey,
+            indent: 12,
+            endIndent: 12,
+          ),
           itemBuilder: (context, index) {
             if (_filterStatus == 'todos' && index == 0) {
               return DashboardWidget(tickets: tickets);
             }
 
-            final ticket =
-                filteredTickets[_filterStatus == 'todos' ? index - 1 : index];
+            final ticket = filteredTickets[_filterStatus == 'todos' ? index - 1 : index];
 
             return Card(
-              elevation: 6,
+              elevation: 4,
               shadowColor: Colors.black26,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
               margin: const EdgeInsets.symmetric(vertical: 8),
               child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
+                // --- CAMBIO AQUÍ: Ahora toda la tarjeta es cliqueable ---
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AdminTicketDetailScreen(ticket: ticket),
+                    ),
+                  );
+                },
+                // -------------------------------------------------------
+                contentPadding: const EdgeInsets.all(16),
                 leading: CircleAvatar(
                   radius: 24,
                   backgroundColor: _getStatusColor(ticket.estado),
@@ -228,76 +272,60 @@ class _AdminTicketsScreenState extends State<AdminTicketsScreen> {
                 title: Text(
                   ticket.titulo,
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: 17,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.2,
                   ),
                 ),
                 subtitle: Padding(
-                  padding: const EdgeInsets.only(top: 6),
+                  padding: const EdgeInsets.only(top: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(
-                            Icons.person,
-                            size: 16,
-                            color: Colors.grey,
-                          ),
+                          const Icon(Icons.person, size: 14, color: Colors.grey),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               ticket.usuarioNombre,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.black87,
-                              ),
+                              style: const TextStyle(fontSize: 13, color: Colors.black87),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Row(
                         children: [
-                          const Icon(
-                            Icons.info_outline,
-                            size: 16,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            ticket.estado.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: _getStatusColor(ticket.estado),
-                              fontWeight: FontWeight.w600,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(ticket.estado).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              ticket.estado.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _getStatusColor(ticket.estado),
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          const Icon(
-                            Icons.priority_high,
-                            size: 16,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 12),
+                          const Icon(Icons.priority_high, size: 14, color: Colors.grey),
+                          const SizedBox(width: 4),
                           Text(
                             ticket.prioridad,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.black87,
-                            ),
+                            style: const TextStyle(fontSize: 12),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       Text(
                         ticket.descripcion,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.black54,
-                        ),
+                        style: const TextStyle(fontSize: 13, color: Colors.black54),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -307,28 +335,20 @@ class _AdminTicketsScreenState extends State<AdminTicketsScreen> {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Tooltip(
-                      message: 'Editar ticket',
-                      child: IconButton(
-                        icon: const Icon(Icons.edit, color: Color(0xFF3B5998)),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (_) =>
-                                      AdminTicketDetailScreen(ticket: ticket),
-                            ),
-                          );
-                        },
-                      ),
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Color(0xFF3B5998)),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AdminTicketDetailScreen(ticket: ticket),
+                          ),
+                        );
+                      },
                     ),
-                    Tooltip(
-                      message: 'Eliminar ticket',
-                      child: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.redAccent),
-                        onPressed: () => _confirmarEliminar(ticket),
-                      ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.redAccent),
+                      onPressed: () => _confirmarEliminar(ticket),
                     ),
                   ],
                 ),
@@ -343,25 +363,31 @@ class _AdminTicketsScreenState extends State<AdminTicketsScreen> {
   void _confirmarEliminar(Ticket ticket) {
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('¿Eliminar Ticket?'),
-            content: const Text('¿Estás seguro de eliminar este ticket?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancelar'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                onPressed: () async {
-                  await TicketService().eliminarTicket(ticket.id);
-                  Navigator.pop(context);
-                },
-                child: const Text('Eliminar'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('¿Eliminar Ticket?'),
+        content: Text('¿Estás seguro de que deseas eliminar el ticket "${ticket.titulo}"? Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
           ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              await TicketService().eliminarTicket(ticket.id);
+              if (context.mounted) Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Ticket eliminado correctamente')),
+              );
+            },
+            child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 }

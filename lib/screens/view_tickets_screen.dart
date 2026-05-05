@@ -9,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:open_filex/open_filex.dart'; // No olvides instalarlo
 import 'package:proyecto_moviles2/screens/ticket_detail_screen.dart';
+import 'package:path_provider/path_provider.dart';
 
 class ViewTicketsScreen extends StatefulWidget {
   final String userId;
@@ -264,121 +265,113 @@ class _ViewTicketsScreenState extends State<ViewTicketsScreen> {
 
   /// ✅ Función corregida: solo guarda PDF local en Android/iOS
   Future<void> _generatePdf(Ticket ticket) async {
-    final pdf = pw.Document();
+  final pdf = pw.Document();
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
-        build: (context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                'Ticket de soporte',
-                style: pw.TextStyle(
-                  fontSize: 26,
-                  fontWeight: pw.FontWeight.bold,
-                ),
+  pdf.addPage(
+    pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(32),
+      build: (context) {
+        return pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(
+              'Ticket de soporte',
+              style: pw.TextStyle(
+                fontSize: 26,
+                fontWeight: pw.FontWeight.bold,
               ),
-              pw.SizedBox(height: 20),
-              pw.Container(
-                padding: const pw.EdgeInsets.all(16),
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: PdfColors.grey600),
-                  borderRadius: pw.BorderRadius.circular(10),
-                  color: PdfColors.grey100,
-                ),
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
+            ),
+            pw.SizedBox(height: 20),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(16),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey600),
+                borderRadius: pw.BorderRadius.circular(10),
+                color: PdfColors.grey100,
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Título:',
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  ),
+                  pw.Text(
+                    ticket.titulo,
+                    style: const pw.TextStyle(fontSize: 16),
+                  ),
+                  pw.SizedBox(height: 10),
+                  pw.Text(
+                    'Descripción:',
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  ),
+                  pw.Text(
+                    ticket.descripcion,
+                    style: const pw.TextStyle(fontSize: 14),
+                  ),
+                  pw.SizedBox(height: 10),
+                  pw.Text(
+                    'Fecha de creación:',
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  ),
+                  pw.Text(_dateFormat.format(ticket.fechaCreacion)),
+                  pw.SizedBox(height: 10),
+                  pw.Text(
+                    'Estado:',
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  ),
+                  pw.Text(_capitalize(ticket.estado)),
+                  pw.SizedBox(height: 10),
+                  if (ticket.prioridad.isNotEmpty) ...[
                     pw.Text(
-                      'Título:',
+                      'Prioridad:',
                       style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                     ),
-                    pw.Text(
-                      ticket.titulo,
-                      style: const pw.TextStyle(fontSize: 16),
-                    ),
-                    pw.SizedBox(height: 10),
-
-                    pw.Text(
-                      'Descripción:',
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                    ),
-                    pw.Text(
-                      ticket.descripcion,
-                      style: const pw.TextStyle(fontSize: 14),
-                    ),
-                    pw.SizedBox(height: 10),
-
-                    pw.Text(
-                      'Fecha de creación:',
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                    ),
-                    pw.Text(_dateFormat.format(ticket.fechaCreacion)),
-                    pw.SizedBox(height: 10),
-
-                    pw.Text(
-                      'Estado:',
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                    ),
-                    pw.Text(_capitalize(ticket.estado)),
-                    pw.SizedBox(height: 10),
-
-                    if (ticket.prioridad.isNotEmpty) ...[
-                      pw.Text(
-                        'Prioridad:',
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                      ),
-                      pw.Text(_capitalize(ticket.prioridad)),
-                    ],
+                    pw.Text(_capitalize(ticket.prioridad)),
                   ],
-                ),
+                ],
               ),
-              pw.SizedBox(height: 40),
-              pw.Text(
-                '',
-                style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
-              ),
-            ],
-          );
-        },
+            ),
+            pw.SizedBox(height: 40),
+            pw.Text(
+              'Documento generado automáticamente por el Sistema de Tickets - Municipalidad de Pocollay',
+              style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+
+  try {
+    final bytes = await pdf.save();
+
+    // ✅ CAMBIO CLAVE: Usamos path_provider para obtener una ruta segura y privada
+    final dir = await getApplicationDocumentsDirectory();
+    final filePath = '${dir.path}/ticket_${ticket.id}.pdf';
+    
+    final file = File(filePath);
+    await file.writeAsBytes(bytes);
+
+    // Notificamos al usuario
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('PDF generado con éxito'),
+        backgroundColor: Colors.green,
       ),
     );
 
-    try {
-      final bytes = await pdf.save();
+    // ✅ Abrimos el archivo inmediatamente con open_filex
+    await OpenFilex.open(filePath);
 
-      // Solicita permiso
-      if (await Permission.storage.request().isDenied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Permiso de almacenamiento denegado')),
-        );
-        return;
-      }
-
-      // Guarda en carpeta Descargas
-      final downloadsDir = Directory('/storage/emulated/0/Download');
-      if (!await downloadsDir.exists()) {
-        await downloadsDir.create(recursive: true);
-      }
-
-      final filePath =
-          '${downloadsDir.path}/ticket_${ticket.titulo}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-      final file = File(filePath);
-      await file.writeAsBytes(bytes);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF guardado en Descargas:\n$filePath')),
-      );
-
-      // Abre el PDF
-      await OpenFilex.open(file.path);
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error al generar PDF: $e')));
-    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error al generar o abrir el PDF: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
 }

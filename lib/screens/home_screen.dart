@@ -5,6 +5,7 @@ import 'package:proyecto_moviles2/screens/login_screen.dart';
 import 'package:proyecto_moviles2/screens/create_ticket_screen.dart';
 import 'package:proyecto_moviles2/screens/view_tickets_screen.dart';
 import 'package:proyecto_moviles2/screens/admin_tickets_screen.dart';
+import 'package:proyecto_moviles2/screens/profile_screen.dart'; // Nueva importación
 import 'package:proyecto_moviles2/services/ticket_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -18,6 +19,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final TicketService _ticketService = TicketService();
   User? _user;
   String _userRole = '';
+  String _userName = ''; // Variable para el nombre
+  String _userEmail = ''; // Variable para el email
   bool _isLoadingRole = true;
 
   final Color primaryColor = const Color(0xFF3B5998);
@@ -49,9 +52,14 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         setState(() {
           if (userDoc.exists) {
-            _userRole = (userDoc.data()?['rol'] ?? '').toString();
+            final data = userDoc.data();
+            _userRole = (data?['rol'] ?? '').toString();
+            _userName = (data?['nombreCompleto'] ?? 'Usuario').toString();
+            _userEmail = (data?['email'] ?? _user?.email ?? '').toString();
           } else {
             _userRole = '';
+            _userName = 'Usuario';
+            _userEmail = _user?.email ?? '';
           }
           _isLoadingRole = false;
         });
@@ -220,11 +228,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.grey[900],
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
+            ], // Cierre correcto de children
+          ), // Cierre correcto de Column
+        ), // Cierre correcto de Container
+      ), // Cierre correcto de InkWell
+    ); // Cierre correcto de Card
   }
 
   void _showSearchDialog(BuildContext context) {
@@ -325,7 +333,19 @@ class _HomeScreenState extends State<HomeScreen> {
             ListTile(
               leading: const Icon(Icons.person),
               title: const Text('Perfil'),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context); // Cierra el modal
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProfileScreen(
+                      nombre: _userName,
+                      email: _userEmail,
+                      rol: _userRole,
+                    ),
+                  ),
+                );
+              },
             ),
             ListTile(
               leading: const Icon(Icons.notifications),
